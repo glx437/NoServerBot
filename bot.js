@@ -1,26 +1,16 @@
 const status = document.getElementById("status")
 let lastUpdateId = 0
 let lastRespondedMessageId = 0
+const token = new URLSearchParams(window.location.search).get("token") || ""
 
-// الحصول على token من رابط الصفحة (query parameter)
-function getTokenFromURL() {
-    const params = new URLSearchParams(window.location.search)
-    return params.get("token") || ""
-}
-
-async function sendMessage(chatId, text, token) {
+async function sendMessage(chatId, text) {
     if (!token) return
     try {
-        const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ chat_id: chatId, text })
         })
-        const data = await response.json()
-        if (!data.ok) {
-            status.textContent = `Telegram API error: ${data.description}`
-            status.style.color = "red"
-        }
     } catch (err) {
         status.textContent = "Error sending message"
         status.style.color = "red"
@@ -28,7 +18,6 @@ async function sendMessage(chatId, text, token) {
 }
 
 async function pollUpdates() {
-    const token = getTokenFromURL()
     if (!token) return
     try {
         const response = await fetch(`https://api.telegram.org/bot${token}/getUpdates?offset=${lastUpdateId + 1}`)

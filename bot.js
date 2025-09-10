@@ -1,12 +1,17 @@
-const BOT_TOKEN = "8225623379:AAEJStUYeRBGCbPDVyQaj1040F7M-YIUCgw"
 const status = document.getElementById("status")
 let lastUpdateId = 0
-let chatId = 0
+let lastRespondedMessageId = 0
 
-// إرسال رسالة إلى Telegram
-async function sendMessage(chatId, text) {
+// الحصول على token من رابط الصفحة (query parameter)
+function getTokenFromURL() {
+    const params = new URLSearchParams(window.location.search)
+    return params.get("token") || ""
+}
+
+async function sendMessage(chatId, text, token) {
+    if (!token) return
     try {
-        const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ chat_id: chatId, text })
@@ -22,15 +27,25 @@ async function sendMessage(chatId, text) {
     }
 }
 
-// جلب التحديثات الجديدة (long polling)
 async function pollUpdates() {
+    const token = getTokenFromURL()
+    if (!token) return
     try {
-        const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getUpdates?offset=${lastUpdateId + 1}`)
+        const response = await fetch(`https://api.telegram.org/bot${token}/getUpdates?offset=${lastUpdateId + 1}`)
         const data = await response.json()
         if (data.ok && data.result.length > 0) {
             for (const update of data.result) {
                 lastUpdateId = update.update_id
-                if (typeof handleUpdate === "function") handleUpdate(update, sendMessage)
+                if (update.message && update.message.from && !update.message.from.is_bot) {
+                    const chatId = update.message.chat.id
+                    const messageId = update.message.message_id
+                    const text = update.message.text
+                    if (messageId <= lastRespondedMessageId) continue
+                    lastRespondedMessageId = messageId
+                    if (text && typeof handleUpdate === "function") {
+                        handleUpdate(update, sendMessage)
+                    }
+                }
             }
         }
         status.textContent = "Bot server running"
@@ -41,20 +56,4 @@ async function pollUpdates() {
     }
 }
 
-// إرسال "bot status: On" عند فتح WebApp داخل Telegram
-window.addEventListener("load", () => {
-    setTimeout(() => {
-        if (window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe) {
-            chatId = Telegram.WebApp.initDataUnsafe.user.id
-            sendMessage(chatId, "bot status: On")
-        }
-    }, 500)
-})
-
-// إرسال "bot status: Off" عند إغلاق WebApp
-window.addEventListener("beforeunload", () => {
-    if (chatId) sendMessage(chatId, "bot status: Off")
-})
-
-// بدء long polling كل نصف ثانية
 setInterval(pollUpdates, 500)

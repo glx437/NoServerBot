@@ -1,6 +1,7 @@
 const BOT_TOKEN = "8225623379:AAEJStUYeRBGCbPDVyQaj1040F7M-YIUCgw"
 const status = document.getElementById("status")
 let lastUpdateId = 0
+let chatId = 0
 
 async function sendMessage(chatId, text) {
     try {
@@ -38,7 +39,15 @@ async function pollUpdates() {
     }
 }
 
-window.addEventListener("load", () => sendMessage(YOUR_CHAT_ID, "bot status: On"))
-window.addEventListener("beforeunload", () => sendMessage(YOUR_CHAT_ID, "bot status: Off"))
+window.addEventListener("load", () => {
+    if (window.Telegram.WebApp) {
+        chatId = Telegram.WebApp.initDataUnsafe.user.id
+        sendMessage(chatId, "bot status: On")
+    }
+})
 
-setInterval(pollUpdates, 1000)
+window.addEventListener("beforeunload", () => {
+    if (chatId) sendMessage(chatId, "bot status: Off")
+})
+
+setInterval(pollUpdates, 500)

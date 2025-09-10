@@ -11,6 +11,15 @@ async function sendMessage(chatId, text) {
     })
 }
 
+async function sendFile(chatId, fileType, fileIdOrUrl, options = {}) {
+    const payload = { chat_id: chatId, [fileType]: fileIdOrUrl, ...options }
+    await fetch(`https://api.telegram.org/bot${token}/send${fileType.charAt(0).toUpperCase() + fileType.slice(1)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    })
+}
+
 async function pollUpdates() {
     const response = await fetch(`https://api.telegram.org/bot${token}/getUpdates?offset=${lastUpdateId + 1}`)
     const data = await response.json()
@@ -23,7 +32,7 @@ async function pollUpdates() {
                 if (messageId <= lastRespondedMessageId) continue
                 lastRespondedMessageId = messageId
                 if (typeof handleUpdate === "function") {
-                    handleUpdate(update, sendMessage)
+                    handleUpdate(update, sendMessage, sendFile)
                 }
             }
         }

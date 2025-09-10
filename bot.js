@@ -3,6 +3,7 @@ const status = document.getElementById("status")
 let lastUpdateId = 0
 let chatId = 0
 
+// إرسال رسالة إلى Telegram
 async function sendMessage(chatId, text) {
     try {
         const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
@@ -21,6 +22,7 @@ async function sendMessage(chatId, text) {
     }
 }
 
+// جلب التحديثات الجديدة (long polling)
 async function pollUpdates() {
     try {
         const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getUpdates?offset=${lastUpdateId + 1}`)
@@ -39,15 +41,20 @@ async function pollUpdates() {
     }
 }
 
+// إرسال "bot status: On" عند فتح WebApp داخل Telegram
 window.addEventListener("load", () => {
-    if (window.Telegram.WebApp) {
-        chatId = Telegram.WebApp.initDataUnsafe.user.id
-        sendMessage(chatId, "bot status: On")
-    }
+    setTimeout(() => {
+        if (window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe) {
+            chatId = Telegram.WebApp.initDataUnsafe.user.id
+            sendMessage(chatId, "bot status: On")
+        }
+    }, 500)
 })
 
+// إرسال "bot status: Off" عند إغلاق WebApp
 window.addEventListener("beforeunload", () => {
     if (chatId) sendMessage(chatId, "bot status: Off")
 })
 
+// بدء long polling كل نصف ثانية
 setInterval(pollUpdates, 500)

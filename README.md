@@ -1,7 +1,6 @@
 # NoServerBot
-bot telegram
-you make this bot easy
-long polling from ~user telegram web~
+long polling from:
+**user telegram web**
 # ✅ Positive
 1) No Webhook
 2) No Server

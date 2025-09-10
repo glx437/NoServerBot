@@ -1,20 +1,24 @@
-// ⚠️ Place your bot token here
+// ⚠️ ضع التوكن الحالي للبوت هنا
 const BOT_TOKEN = "8225623379:AAEJStUYeRBGCbPDVyQaj1040F7M-YIUCgw";
 
 const sendBtn = document.getElementById("sendBtn");
 const status = document.getElementById("status");
 
-// Get chat_id automatically from Telegram WebApp
+// الحصول على chat_id تلقائيًا من Telegram WebApp
 let chatId = null;
 
 if (window.Telegram.WebApp) {
     chatId = Telegram.WebApp.initDataUnsafe.user.id;
+    console.log("Detected chat ID:", chatId);
 } else {
     status.textContent = "Please open this WebApp inside Telegram only!";
 }
 
 sendBtn.addEventListener("click", async () => {
-    if (!chatId) return;
+    if (!chatId) {
+        status.textContent = "Cannot detect chat ID.";
+        return;
+    }
 
     const message = "Hello! 👋 This is a test welcome bot.";
 
@@ -28,15 +32,24 @@ sendBtn.addEventListener("click", async () => {
             })
         });
 
+        // فحص HTTP response
+        if (!response.ok) {
+            status.textContent = `HTTP error: ${response.status} ${response.statusText}`;
+            return;
+        }
+
         const data = await response.json();
 
         if (data.ok) {
             status.textContent = "Welcome message sent successfully!";
         } else {
-            status.textContent = `Error: ${data.description}`;
+            // Telegram API returned an error
+            status.textContent = `Telegram API error: ${data.description}`;
         }
+
     } catch (err) {
-        console.error(err);
-        status.textContent = "An error occurred while sending the message.";
+        // Network or JS error
+        console.error("Fetch error:", err);
+        status.textContent = "An unexpected error occurred while sending the message.";
     }
 });

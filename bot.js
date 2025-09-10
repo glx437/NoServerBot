@@ -1,44 +1,27 @@
-const status = document.getElementById("status")
-let lastUpdateId = 0
-let lastRespondedMessageId = 0
-const token = new URLSearchParams(window.location.search).get("token") || ""
+const urlParams = new URLSearchParams(window.location.search)
+const token = urlParams.get("token")
 
-async function sendMessage(chatId, text) {
-    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: chatId, text })
-    })
+if (!token) {
+    throw new Error("Token is missing in the URL. Use ?token=YOUR_TOKEN")
 }
 
-async function sendFile(chatId, fileType, fileIdOrUrl, options = {}) {
-    const payload = { chat_id: chatId, [fileType]: fileIdOrUrl, ...options }
-    await fetch(`https://api.telegram.org/bot${token}/send${fileType.charAt(0).toUpperCase() + fileType.slice(1)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-    })
-}
+const apiUrl = `https://api.telegram.org/bot${token}/`
+let offset = 0
 
-async function pollUpdates() {
-    const response = await fetch(`https://api.telegram.org/bot${token}/getUpdates?offset=${lastUpdateId + 1}`)
-    const data = await response.json()
-    if (data.ok && data.result.length > 0) {
-        for (const update of data.result) {
-            lastUpdateId = update.update_id
-            if (update.message && update.message.from && !update.message.from.is_bot) {
-                const chatId = update.message.chat.id
-                const messageId = update.message.message_id
-                if (messageId <= lastRespondedMessageId) continue
-                lastRespondedMessageId = messageId
-                if (typeof handleUpdate === "function") {
-                    handleUpdate(update, sendMessage, sendFile)
-                }
+async function getUpdates() {
+    try {
+        const response = await fetch(`${apiUrl}getUpdates?offset=${offset + 1}&timeout=1`)
+        const data = await response.json()
+
+        if (data.ok) {
+            for (const update of data.result) {
+                offset = update.update_id
+                handleUpdate(update)
             }
         }
+    } catch (e) {
+        console.error("Error fetching updates:", e)
     }
-    status.textContent = "Bot server running"
-    status.style.color = "green"
 }
 
-setInterval(pollUpdates, 500)
+setInterval(getUpdates, 500)

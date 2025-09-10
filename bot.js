@@ -10,9 +10,13 @@ async function sendMessage(chatId, text) {
             body: JSON.stringify({ chat_id: chatId, text })
         })
         const data = await response.json()
-        if (!data.ok) status.textContent = `Telegram API error: ${data.description}`; status.style.color = "red"
+        if (!data.ok) {
+            status.textContent = `Telegram API error: ${data.description}`
+            status.style.color = "red"
+        }
     } catch (err) {
-        status.textContent = "Error sending message"; status.style.color = "red"
+        status.textContent = "Error sending message"
+        status.style.color = "red"
     }
 }
 
@@ -26,13 +30,15 @@ async function pollUpdates() {
                 if (typeof handleUpdate === "function") handleUpdate(update, sendMessage)
             }
         }
-        status.textContent = "Bot server running"; status.style.color = "green"
+        status.textContent = "Bot server running"
+        status.style.color = "green"
     } catch (err) {
-        status.textContent = "Polling error"; status.style.color = "red"
+        status.textContent = "Polling error"
+        status.style.color = "red"
     }
 }
 
-window.addEventListener("load", () => sendMessage(YOUR_CHAT_ID, "bot server: On"))
-window.addEventListener("beforeunload", () => sendMessage(YOUR_CHAT_ID, "bot server: Off"))
+window.addEventListener("load", () => sendMessage(YOUR_CHAT_ID, "bot status: On"))
+window.addEventListener("beforeunload", () => sendMessage(YOUR_CHAT_ID, "bot status: Off"))
 
 setInterval(pollUpdates, 1000)

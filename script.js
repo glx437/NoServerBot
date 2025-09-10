@@ -1,102 +1,52 @@
-function handleUpdate(update) {
-    if (!update.message) return
-
-    const chatId = update.message.chat.id
-
-    // Forward text
-    if (update.message.text) {
-        sendMessage(chatId, update.message.text)
-    }
-
-    // Forward photo
-    if (update.message.photo) {
-        const fileId = update.message.photo.slice(-1)[0].file_id
-        sendPhoto(chatId, fileId)
-    }
-
-    // Forward document
-    if (update.message.document) {
-        const fileId = update.message.document.file_id
-        sendDocument(chatId, fileId)
-    }
-
-    // Forward audio
-    if (update.message.audio) {
-        const fileId = update.message.audio.file_id
-        sendAudio(chatId, fileId)
-    }
-
-    // Forward video
-    if (update.message.video) {
-        const fileId = update.message.video.file_id
-        sendVideo(chatId, fileId)
-    }
-
-    // Forward voice
-    if (update.message.voice) {
-        const fileId = update.message.voice.file_id
-        sendVoice(chatId, fileId)
-    }
-
-    // Stickers
-    if (update.message.sticker) {
-        const fileId = update.message.sticker.file_id
-        sendSticker(chatId, fileId)
-    }
-}
-
-function sendMessage(chatId, text) {
-    fetch(`${apiUrl}sendMessage`, {
+async function sendMessage(chatId, text) {
+    await fetch(`https://api.telegram.org/bot${new URLSearchParams(window.location.search).get("token")}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ chat_id: chatId, text })
     })
 }
 
-function sendPhoto(chatId, fileId) {
-    fetch(`${apiUrl}sendPhoto`, {
+async function sendFile(chatId, fileType, fileIdOrUrl, options = {}) {
+    const payload = { chat_id: chatId, [fileType]: fileIdOrUrl, ...options }
+    await fetch(`https://api.telegram.org/bot${new URLSearchParams(window.location.search).get("token")}/send${fileType.charAt(0).toUpperCase() + fileType.slice(1)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: chatId, photo: fileId })
+        body: JSON.stringify(payload)
     })
 }
 
-function sendDocument(chatId, fileId) {
-    fetch(`${apiUrl}sendDocument`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: chatId, document: fileId })
-    })
-}
+function handleUpdate(update, sendMessage, sendFile) {
+    const msg = update.message
+    if (!msg) return
+    const chatId = msg.chat.id
 
-function sendAudio(chatId, fileId) {
-    fetch(`${apiUrl}sendAudio`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: chatId, audio: fileId })
-    })
-}
+    if (msg.text) return sendMessage(chatId, msg.text)
 
-function sendVideo(chatId, fileId) {
-    fetch(`${apiUrl}sendVideo`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: chatId, video: fileId })
-    })
-}
+    const mediaMap = {
+        photo: "photo",
+        animation: "animation",
+        video: "video",
+        document: "document",
+        audio: "audio",
+        voice: "voice",
+        sticker: "sticker",
+        video_note: "video_note"
+    }
 
-function sendVoice(chatId, fileId) {
-    fetch(`${apiUrl}sendVoice`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: chatId, voice: fileId })
-    })
-}
+    for (const key in mediaMap) {
+        if (msg[key]) {
+            const entry = Array.isArray(msg[key]) ? msg[key][msg[key].length - 1] : msg[key]
+            return sendFile(chatId, mediaMap[key], entry.file_id)
+        }
+    }
 
-function sendSticker(chatId, fileId) {
-    fetch(`${apiUrl}sendSticker`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: chatId, sticker: fileId })
-    })
-}
+    if (msg.contact) {
+        const c = msg.contact
+        return sendMessage(chatId, `Received contact: ${c.first_name || ""} ${c.last_name || ""}`)
+    }
+
+    if (msg.location) {
+        const loc = msg.location
+        return sendMessage(chatId, `Received location: lat=${loc.latitude}, lon=${loc.longitude}`)
+    }
+        }

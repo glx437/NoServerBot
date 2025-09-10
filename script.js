@@ -1,55 +1,56 @@
 // ⚠️ ضع التوكن الحالي للبوت هنا
 const BOT_TOKEN = "8225623379:AAEJStUYeRBGCbPDVyQaj1040F7M-YIUCgw";
 
-const sendBtn = document.getElementById("sendBtn");
 const status = document.getElementById("status");
 
-// الحصول على chat_id تلقائيًا من Telegram WebApp
-let chatId = null;
+// لتخزين آخر تحديث للتأكد من عدم معالجة نفس الرسائل أكثر من مرة
+let lastUpdateId = 0;
 
-if (window.Telegram.WebApp) {
-    chatId = Telegram.WebApp.initDataUnsafe.user.id;
-    console.log("Detected chat ID:", chatId);
-} else {
-    status.textContent = "Please open this WebApp inside Telegram only!";
+// وظيفة لفحص الرسائل الجديدة كل ثانية
+async function pollUpdates() {
+    try {
+        const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getUpdates?offset=${lastUpdateId + 1}`);
+        const data = await response.json();
+
+        if (data.ok && data.result.length > 0) {
+            for (const update of data.result) {
+                lastUpdateId = update.update_id;
+
+                if (update.message && update.message.text === "/start") {
+                    const chatId = update.message.chat.id;
+                    sendWelcomeMessage(chatId);
+                }
+            }
+        }
+    } catch (err) {
+        console.error("Polling error:", err);
+        status.textContent = "An error occurred while polling updates.";
+    }
 }
 
-sendBtn.addEventListener("click", async () => {
-    if (!chatId) {
-        status.textContent = "Cannot detect chat ID.";
-        return;
-    }
-
-    const message = "Hello! 👋 This is a test welcome bot.";
+// وظيفة لإرسال رسالة ترحيب
+async function sendWelcomeMessage(chatId) {
+    const message = "Hello! 👋 Welcome to the bot.";
 
     try {
         const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                chat_id: chatId,
-                text: message
-            })
+            body: JSON.stringify({ chat_id: chatId, text: message })
         });
-
-        // فحص HTTP response
-        if (!response.ok) {
-            status.textContent = `HTTP error: ${response.status} ${response.statusText}`;
-            return;
-        }
 
         const data = await response.json();
 
         if (data.ok) {
-            status.textContent = "Welcome message sent successfully!";
+            status.textContent = `Welcome message sent to chat ${chatId}`;
         } else {
-            // Telegram API returned an error
             status.textContent = `Telegram API error: ${data.description}`;
         }
-
     } catch (err) {
-        // Network or JS error
-        console.error("Fetch error:", err);
-        status.textContent = "An unexpected error occurred while sending the message.";
+        console.error("Send message error:", err);
+        status.textContent = "An error occurred while sending the welcome message.";
     }
-});
+}
+
+// بدء الفحص كل ثانية
+setInterval(pollUpdates, 1000);

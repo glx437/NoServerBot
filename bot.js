@@ -17,28 +17,39 @@ document.addEventListener("DOMContentLoaded", () => {
     token = params.get("token") || ""
     const externalJsUrl = params.get("url") || ""
 
-    if (!token || !externalJsUrl) {
+    if (!token) {
         if (statusEl) {
-            statusEl.textContent = "Bot initialization error: missing token or script URL"
+            statusEl.textContent = "Error: missing token"
             statusEl.style.color = "red"
         }
-        return
+        console.error("Missing token in URL")
     }
 
-    const script = document.createElement("script")
-    script.src = externalJsUrl
-    script.async = true
-    script.onload = () => console.log("External script loaded")
-    script.onerror = () => {
-        console.error("Failed to load external script")
+    if (!externalJsUrl) {
         if (statusEl) {
-            statusEl.textContent = "Failed to load external script"
+            statusEl.textContent = "Error: missing script URL"
             statusEl.style.color = "red"
         }
+        console.error("Missing script URL in URL")
     }
-    document.head.appendChild(script)
+
+    if (externalJsUrl) {
+        const script = document.createElement("script")
+        script.src = externalJsUrl
+        script.async = true
+        script.onload = () => console.log("External script loaded")
+        script.onerror = () => {
+            console.error("Failed to load external script")
+            if (statusEl) {
+                statusEl.textContent = "Failed to load external script"
+                statusEl.style.color = "red"
+            }
+        }
+        document.head.appendChild(script)
+    }
 
     async function send(file, targetChatId, options = {}) {
+        if (!token) return
         let type = "text"
         if (typeof file === "string") {
             if (file.startsWith("http") || file.startsWith("data:")) type = "document"
@@ -51,17 +62,20 @@ document.addEventListener("DOMContentLoaded", () => {
         if (type === "text") payload.text = file
         else payload[type] = file
 
-        if (!token) return
-
-        await fetch(`https://api.telegram.org/bot${token}/${type === "text" ? "sendMessage" : "send" + type.charAt(0).toUpperCase() + type.slice(1)}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        })
+        try {
+            await fetch(`https://api.telegram.org/bot${token}/${type === "text" ? "sendMessage" : "send" + type.charAt(0).toUpperCase() + type.slice(1)}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            })
+        } catch (e) {
+            console.error("Send error:", e)
+        }
     }
 
     let lastUpdateId = 0
     async function pollUpdates() {
+        if (!token) return
         countRequest++
         const start = Date.now()
         try {
@@ -96,3 +110,4 @@ document.addEventListener("DOMContentLoaded", () => {
 
     setInterval(pollUpdates, 300)
 })
+    

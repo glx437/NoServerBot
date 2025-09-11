@@ -22,20 +22,6 @@ const Bot = {
             this.startPolling()
         })
     },
-
-    type(message) {
-        if (!message) return null
-        if (message.text) return { type: "text", content: message.text }
-        if (message.photo && message.photo.length > 0) return { type: "photo", content: message.photo[message.photo.length - 1].file_id, caption: message.caption || "" }
-        if (message.document) return { type: "document", content: message.document.file_id, caption: message.caption || "" }
-        if (message.video) return { type: "video", content: message.video.file_id, caption: message.caption || "" }
-        if (message.audio) return { type: "audio", content: message.audio.file_id, caption: message.caption || "" }
-        if (message.voice) return { type: "voice", content: message.voice.file_id }
-        if (message.sticker) return { type: "sticker", content: message.sticker.file_id }
-        if (message.video_note) return { type: "videoNote", content: message.video_note.file_id }
-        return null
-    },
-
     async send(file, chatId, options = {}) {
         if (!this.token || !file) return
         const payload = { chat_id: chatId, ...options }

@@ -1,46 +1,44 @@
-(() => {
-if (!window.send) return
-
-let step = 0
-let userToken = ""
-let userUrl = ""
+const userStates = {}
 
 window.handleUpdate = async (update, send) => {
     try {
         const msg = update.message
         if (!msg || !msg.text) return
         const chatId = msg.chat.id
+        const userId = msg.from.id
         const text = msg.text.trim()
 
-        if (step === 0 && text === "/create") {
+        if (!userStates[userId]) {
+            userStates[userId] = { step: 0, token: "", url: "" }
+        }
+
+        const state = userStates[userId]
+
+        if (state.step === 0 && text.toLowerCase() === "/create") {
             await send("Send your token:", chatId)
-            step = 1
+            state.step = 1
             return
         }
 
-        if (step === 1) {
-            userToken = text
+        if (state.step === 1) {
+            state.token = text
             await send("Send your script URL:", chatId)
-            step = 2
+            state.step = 2
             return
         }
 
-        if (step === 2) {
-            userUrl = text
-            const webAppLink = `https://www.domain/?token=${encodeURIComponent(userToken)}&url=${encodeURIComponent(userUrl)}`
+        if (state.step === 2) {
+            state.url = text
+            const webAppLink = `https://www.domain/?token=${encodeURIComponent(state.token)}&url=${encodeURIComponent(state.url)}`
             await send(`Success! Your WebApp link:\n${webAppLink}`, chatId)
-            step = 0
-            userToken = ""
-            userUrl = ""
+            state.step = 0
+            state.token = ""
+            state.url = ""
             return
         }
     } catch (e) {
         const chatId = update.message && update.message.chat && update.message.chat.id
-        if (chatId) await send("error", chatId)
-        console.error("script.js handleUpdate error:", e)
-        step = 0
-        userToken = ""
-        userUrl = ""
+        if (chatId) await send(`Error: ${e.message || "unknown error"}`, chatId)
+        console.error("handleUpdate error:", e)
     }
 }
-})()

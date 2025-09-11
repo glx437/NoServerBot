@@ -35,6 +35,7 @@ const Bot = {
     if (message.video_note) return { type: "videoNote", content: message.video_note.file_id }
     return null
 }
+
     async send(file, targetChatId, options = {}) {
     if (!this.token || !file) return
     const payload = { chat_id: targetChatId, ...options }
@@ -79,6 +80,12 @@ const Bot = {
         default:
             return
     }
+    await fetch(`https://api.telegram.org/bot${this.token}/${method}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    })
+}
     await fetch(`https://api.telegram.org/bot${this.token}/${method}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

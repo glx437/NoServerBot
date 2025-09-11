@@ -8,35 +8,19 @@ const Bot = {
     userId: null,
     chatId: null,
     token: null,
-    statusEl: null,
     initialized: false,
 
     init() {
         document.addEventListener("DOMContentLoaded", () => {
-            this.statusEl = document.getElementById("status")
-            this.setStatus("Bot initializing...", "orange")
             const params = new URLSearchParams(window.location.search)
             this.token = params.get("token") || ""
             const externalJsUrl = params.get("url") || ""
-            if (!this.token) return this.error("Missing token in URL")
-            if (!externalJsUrl) return this.error("Missing script URL in URL")
+            if (!this.token) return
+            if (!externalJsUrl) return
             this.loadExternalScript(externalJsUrl)
             this.initialized = true
             this.startPolling()
         })
-    },
-
-    setStatus(message = "") {
-        if (!this.statusEl) return
-        const statusText = `${message} | lastMessageId: ${this.lastMessageId} | lastUpdateId: ${this.lastUpdateId} | countRequest: ${this.countRequest} | speedRequest: ${this.speedRequest} | userId: ${this.userId} | chatId: ${this.chatId}`
-        this.statusEl.textContent = statusText
-        this.statusEl.style.color = "green"
-    },
-
-    error(message) {
-        if (!this.statusEl) return
-        this.statusEl.textContent = `Error: ${message}`
-        this.statusEl.style.color = "red"
     },
 
     type(message) {
@@ -92,16 +76,11 @@ const Bot = {
             default:
                 return
         }
-        try {
-            await fetch(`https://api.telegram.org/bot${this.token}/${method}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            })
-            this.setStatus(`Message sent to chat ${targetChatId}`)
-        } catch (e) {
-            this.error(`Error sending message: ${e.message}`)
-        }
+        await fetch(`https://api.telegram.org/bot${this.token}/${method}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        })
     },
 
     async pollUpdates() {
@@ -121,22 +100,16 @@ const Bot = {
                 this.userId = msg.from.id
                 this.chatId = msg.chat.id
                 if (typeof window.handleUpdate === "function") {
-                    window.handleUpdate(msg, this)
+                    window.handleUpdate(msg, Bot)
                 }
             }
         } catch (e) {
-            this.error(`Bot polling error: ${e.message}`)
         }
-        this.updateSpeed()
-    },
-
-    updateSpeed() {
         const now = Date.now()
         if (now - this.lastTime >= 1000) {
             this.speedRequest = this.requestCountInSecond
             this.requestCountInSecond = 0
             this.lastTime = now
-            this.setStatus()
         }
     },
 
@@ -152,12 +125,6 @@ const Bot = {
         const script = document.createElement("script")
         script.src = url
         script.async = false
-        script.onload = () => {
-            this.setStatus(`Bot and script loaded successfully`)
-        }
-        script.onerror = (e) => {
-            this.error(`Failed to load external script: ${e.message || "unknown"}`)
-        }
         document.head.appendChild(script)
     },
 }

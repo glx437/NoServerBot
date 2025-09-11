@@ -1,4 +1,3 @@
-// متغيرات عالمية لتسهيل برمجة script الخارجي
 let lastMessageId = 0
 let countRequest = 0
 let speedRequest = 0
@@ -8,12 +7,13 @@ let AdminId = null
 let token = null
 
 (() => {
-const statusEl = document.getElementById("status")
 const params = new URLSearchParams(window.location.search)
+token = params.get("token") || ""
 const externalJsUrl = params.get("url") || ""
-if (!externalJsUrl) return
+const statusEl = document.getElementById("status")
 
-// تحميل script خارجي بشكل موثوق
+if (!token || !externalJsUrl) return
+
 const script = document.createElement("script")
 script.src = externalJsUrl
 script.async = true
@@ -21,7 +21,6 @@ script.onload = () => console.log("External script loaded")
 script.onerror = () => console.error("Failed to load external script")
 document.head.appendChild(script)
 
-// دالة send لتحديد نوع الملف تلقائيًا وإرساله
 async function send(file, targetChatId, options = {}) {
     let type = "text"
     if (typeof file === "string") {
@@ -44,7 +43,6 @@ async function send(file, targetChatId, options = {}) {
     })
 }
 
-// long polling
 let lastUpdateId = 0
 async function pollUpdates() {
     countRequest++

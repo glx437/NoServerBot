@@ -26,17 +26,20 @@ const Bot = {
         })
     },
 
-    setStatus(text, color = "black") {
+    setStatus(message = "") {
         if (!this.statusEl) return
-        this.statusEl.textContent = text
-        this.statusEl.style.color = color
+        const statusText = `${message} | lastMessageId: ${this.lastMessageId} | lastUpdateId: ${this.lastUpdateId} | countRequest: ${this.countRequest} | speedRequest: ${this.speedRequest} | userId: ${this.userId} | chatId: ${this.chatId}`
+        this.statusEl.textContent = statusText
+        this.statusEl.style.color = "green"
     },
 
     error(message) {
-        this.setStatus(`Error: ${message}`, "red")
+        if (!this.statusEl) return
+        this.statusEl.textContent = `Error: ${message}`
+        this.statusEl.style.color = "red"
     },
 
-    receive(message) {
+    type(message) {
         if (!message) return null
         if (message.text) return { type: "text", content: message.text }
         if (message.photo && message.photo.length > 0) return { type: "photo", content: message.photo[message.photo.length - 1].file_id }
@@ -95,9 +98,9 @@ const Bot = {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
             })
-            this.setStatus(`Message sent to chat ${targetChatId}`, "green")
+            this.setStatus(`Message sent to chat ${targetChatId}`)
         } catch (e) {
-            this.setStatus(`Error sending message: ${e.message}`, "red")
+            this.error(`Error sending message: ${e.message}`)
         }
     },
 
@@ -118,11 +121,11 @@ const Bot = {
                 this.userId = msg.from.id
                 this.chatId = msg.chat.id
                 if (typeof window.handleUpdate === "function") {
-                    window.handleUpdate(msg, this.send.bind(this))
+                    window.handleUpdate(msg, this)
                 }
             }
         } catch (e) {
-            this.setStatus(`Bot polling error: ${e.message}`, "red")
+            this.error(`Bot polling error: ${e.message}`)
         }
         this.updateSpeed()
     },
@@ -133,7 +136,7 @@ const Bot = {
             this.speedRequest = this.requestCountInSecond
             this.requestCountInSecond = 0
             this.lastTime = now
-            this.setStatus(`Bot running | Requests: ${this.countRequest} | Speed: ${this.speedRequest} req/s`, "green")
+            this.setStatus()
         }
     },
 
@@ -150,14 +153,13 @@ const Bot = {
         script.src = url
         script.async = false
         script.onload = () => {
-            this.setStatus(`Bot and script loaded successfully | Requests: ${this.countRequest} | Speed: ${this.speedRequest} req/s`, "green")
+            this.setStatus(`Bot and script loaded successfully`)
         }
         script.onerror = (e) => {
-            this.setStatus(`Failed to load external script: ${e.message || "unknown"}`, "red")
+            this.error(`Failed to load external script: ${e.message || "unknown"}`)
         }
         document.head.appendChild(script)
     },
 }
 
 Bot.init()
-            

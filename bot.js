@@ -1,132 +1,141 @@
-let lastMessageId = 0
-let countRequest = 0
-let speedRequest = 0
-let userId = null
-let chatId = null
-let AdminId = null
-let token = null
+// bot.js - نسخة محسنة ومنظمة
+const Bot = {
+    lastMessageId: 0,
+    lastUpdateId: 0,
+    countRequest: 0,
+    speedRequest: 0,
+    requestCountInSecond: 0,
+    lastTime: Date.now(),
+    userId: null,
+    chatId: null,
+    token: null,
+    statusEl: null,
+    initialized: false,
 
-document.addEventListener("DOMContentLoaded", () => {
-    const statusEl = document.getElementById("status")
-    if (statusEl) {
-        statusEl.textContent = "Bot initializing..."
-        statusEl.style.color = "orange"
-    }
+    init() {
+        document.addEventListener("DOMContentLoaded", () => {
+            this.statusEl = document.getElementById("status");
+            this.setStatus("Bot initializing...", "orange");
 
-    const params = new URLSearchParams(window.location.search)
-    token = params.get("token") || ""
-    const externalJsUrl = params.get("url") || ""
+            const params = new URLSearchParams(window.location.search);
+            this.token = params.get("token") || "";
+            const externalJsUrl = params.get("url") || "";
 
-    if (!token) {
-        if (statusEl) {
-            statusEl.textContent = "Error: missing token"
-            statusEl.style.color = "red"
-        }
-        console.error("Missing token in URL")
-        return
-    }
+            if (!this.token) return this.error("Missing token in URL");
+            if (!externalJsUrl) return this.error("Missing script URL in URL");
 
-    if (!externalJsUrl) {
-        if (statusEl) {
-            statusEl.textContent = "Error: missing script URL"
-            statusEl.style.color = "red"
-        }
-        console.error("Missing script URL in URL")
-        return
-    }
+            this.loadExternalScript(externalJsUrl);
+            this.initialized = true;
+            this.startPolling();
+        });
+    },
 
-    async function send(file, targetChatId, options = {}) {
-        if (!token) return
-        let type = "text"
-        if (typeof file === "string") {
-            if (file.startsWith("http") || file.startsWith("data:")) type = "document"
-        } else if (file && file.fileType) {
-            type = file.fileType
-            file = file.file_id || file
-        } else if (file && file.file_id) type = "document"
+    setStatus(text, color = "black") {
+        if (!this.statusEl) return;
+        this.statusEl.textContent = text;
+        this.statusEl.style.color = color;
+    },
 
-        const payload = { chat_id: targetChatId, ...options }
-        if (type === "text") payload.text = file
-        else payload[type] = file
+    error(message) {
+        console.error(message);
+        this.setStatus(`Error: ${message}`, "red");
+    },
+
+    async send(content, targetChatId, options = {}) {
+        if (!this.token) return;
+        let type = "text";
+
+        if (typeof content === "string") {
+            if (content.startsWith("http") || content.startsWith("data:")) type = "document";
+        } else if (content && content.fileType) {
+            type = content.fileType;
+            content = content.file_id || content;
+        } else if (content && content.file_id) type = "document";
+
+        const payload = { chat_id: targetChatId, ...options };
+        if (type === "text") payload.text = content;
+        else payload[type] = content;
+
+        const method = type === "text" ? "sendMessage" : "send" + type.charAt(0).toUpperCase() + type.slice(1);
 
         try {
-            await fetch(`https://api.telegram.org/bot${token}/${type === "text" ? "sendMessage" : "send" + type.charAt(0).toUpperCase() + type.slice(1)}`, {
+            await fetch(`https://api.telegram.org/bot${this.token}/${method}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            })
+                body: JSON.stringify(payload),
+            });
         } catch (e) {
-            console.error("Send error:", e)
-            if (statusEl) {
-                statusEl.textContent = "Error sending message"
-                statusEl.style.color = "red"
-            }
+            console.error("Send error:", e);
+            this.setStatus("Error sending message", "red");
         }
-    }
+    },
 
-    let lastUpdateId = 0
-    let lastTime = Date.now()
-    let requestCountInSecond = 0
+    async pollUpdates() {
+        if (!this.token || !this.initialized) return;
 
-    async function pollUpdates() {
-        if (!token) return
-        countRequest++
-        requestCountInSecond++
-        const start = Date.now()
+        this.countRequest++;
+        this.requestCountInSecond++;
+
         try {
-            const res = await fetch(`https://api.telegram.org/bot${token}/getUpdates?offset=${lastUpdateId + 1}`)
-            const data = await res.json()
-            if (!data.ok) return
+            const res = await fetch(`https://api.telegram.org/bot${this.token}/getUpdates?offset=${this.lastUpdateId + 1}&timeout=10`);
+            const data = await res.json();
+            if (!data.ok) return;
+
             for (const update of data.result) {
-                lastUpdateId = update.update_id
-                const msg = update.message
-                if (!msg || !msg.from || msg.from.is_bot) continue
-                userId = msg.from.id
-                chatId = msg.chat.id
-                if (msg.message_id <= lastMessageId) continue
-                lastMessageId = msg.message_id
+                this.lastUpdateId = update.update_id;
+                const msg = update.message;
+                if (!msg || !msg.from || msg.from.is_bot) continue;
+                if (msg.message_id <= this.lastMessageId) continue;
+
+                this.lastMessageId = msg.message_id;
+                this.userId = msg.from.id;
+                this.chatId = msg.chat.id;
+
                 if (typeof window.handleUpdate === "function") {
-                    window.handleUpdate(update, send)
+                    window.handleUpdate(update, this.send.bind(this));
                 }
             }
         } catch (e) {
-            console.error("getUpdates error", e)
-            if (statusEl) {
-                statusEl.textContent = `Bot polling error: ${e.message}`
-                statusEl.style.color = "red"
-            }
+            console.error("getUpdates error:", e);
+            this.setStatus(`Bot polling error: ${e.message}`, "red");
         }
-        const now = Date.now()
-        if (now - lastTime >= 1000) {
-            speedRequest = requestCountInSecond
-            requestCountInSecond = 0
-            lastTime = now
-        }
-        if (statusEl) {
-            statusEl.textContent = `Bot running | Requests: ${countRequest} | Speed: ${speedRequest} req/s`
-            statusEl.style.color = "green"
-        }
-    }
 
-    setInterval(pollUpdates, 300)
+        this.updateSpeed();
+    },
 
-    // تحميل script.js بعد جاهزية bot.js
-    const script = document.createElement("script")
-    script.src = externalJsUrl
-    script.async = false
-    script.onload = () => {
-        console.log("External script loaded")
-        if (statusEl) {
-            statusEl.textContent = `Bot and script loaded successfully | Requests: ${countRequest} | Speed: ${speedRequest} req/s`
-            statusEl.style.color = "green"
+    updateSpeed() {
+        const now = Date.now();
+        if (now - this.lastTime >= 1000) {
+            this.speedRequest = this.requestCountInSecond;
+            this.requestCountInSecond = 0;
+            this.lastTime = now;
+            this.setStatus(`Bot running | Requests: ${this.countRequest} | Speed: ${this.speedRequest} req/s`, "green");
         }
-    }
-    script.onerror = (e) => {
-        console.error("Failed to load external script", e)
-        if (statusEl) {
-            statusEl.textContent = `Failed to load external script: ${e.message || "unknown"}`
-            statusEl.style.color = "red"
-        }
-    }
-    document.head.appendChild(script)
-})
+    },
+
+    startPolling() {
+        const poll = async () => {
+            await this.pollUpdates();
+            // استخدم long polling بدلاً من interval ثابت
+            setTimeout(poll, 100); // تأخير قصير لتخفيف الضغط على المتصفح
+        };
+        poll();
+    },
+
+    loadExternalScript(url) {
+        const script = document.createElement("script");
+        script.src = url;
+        script.async = false;
+        script.onload = () => {
+            console.log("External script loaded");
+            this.setStatus(`Bot and script loaded successfully | Requests: ${this.countRequest} | Speed: ${this.speedRequest} req/s`, "green");
+        };
+        script.onerror = (e) => {
+            console.error("Failed to load external script", e);
+            this.setStatus(`Failed to load external script: ${e.message || "unknown"}`, "red");
+        };
+        document.head.appendChild(script);
+    },
+};
+
+Bot.init();

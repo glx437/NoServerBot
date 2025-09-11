@@ -23,6 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
             statusEl.style.color = "red"
         }
         console.error("Missing token in URL")
+        return
     }
 
     if (!externalJsUrl) {
@@ -31,21 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
             statusEl.style.color = "red"
         }
         console.error("Missing script URL in URL")
-    }
-
-    if (externalJsUrl) {
-        const script = document.createElement("script")
-        script.src = externalJsUrl
-        script.async = true
-        script.onload = () => console.log("External script loaded")
-        script.onerror = () => {
-            console.error("Failed to load external script")
-            if (statusEl) {
-                statusEl.textContent = "Failed to load external script"
-                statusEl.style.color = "red"
-            }
-        }
-        document.head.appendChild(script)
+        return
     }
 
     async function send(file, targetChatId, options = {}) {
@@ -70,12 +57,15 @@ document.addEventListener("DOMContentLoaded", () => {
             })
         } catch (e) {
             console.error("Send error:", e)
+            if (statusEl) {
+                statusEl.textContent = "Error sending message"
+                statusEl.style.color = "red"
+            }
         }
     }
 
     let lastUpdateId = 0
     async function pollUpdates() {
-        if (!token) return
         countRequest++
         const start = Date.now()
         try {
@@ -109,5 +99,24 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     setInterval(pollUpdates, 300)
+
+    // تحميل script.js بعد أن يكون bot.js جاهز
+    const script = document.createElement("script")
+    script.src = externalJsUrl
+    script.async = false
+    script.onload = () => {
+        console.log("External script loaded")
+        if (statusEl) {
+            statusEl.textContent = `Bot and script loaded successfully | Requests: ${countRequest} | Speed: ${speedRequest}ms`
+            statusEl.style.color = "green"
+        }
+    }
+    script.onerror = () => {
+        console.error("Failed to load external script")
+        if (statusEl) {
+            statusEl.textContent = "Failed to load external script"
+            statusEl.style.color = "red"
+        }
+    }
+    document.head.appendChild(script)
 })
-    

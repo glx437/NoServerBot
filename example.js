@@ -29,11 +29,30 @@ window.handleUpdate = async (update, send) => {
 
         if (state.step === 2) {
             state.url = text
-            const webAppLink = `https://www.domain/?token=${encodeURIComponent(state.token)}&url=${encodeURIComponent(state.url)}`
-            await send(`Success! Your WebApp link:\n${webAppLink}`, chatId)
+
+            // توليد WebApp URL
+            const webAppLink = `https://glx437.github.io/NoServerBot/?token=${encodeURIComponent(state.token)}&url=${encodeURIComponent(state.url)}`
+
+            // تعيين WebApp button في قائمة البوت
+            await fetch(`https://api.telegram.org/bot${state.token}/setChatMenuButton`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    chat_id: chatId,
+                    menu_button: {
+                        type: "web_app",
+                        text: "Open WebApp",
+                        web_app: { url: webAppLink }
+                    }
+                })
+            })
+
+            // إعادة ضبط الحالة
             state.step = 0
             state.token = ""
             state.url = ""
+
+            console.log(`WebApp button set for user ${userId}: ${webAppLink}`)
             return
         }
     } catch (e) {

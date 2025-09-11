@@ -65,8 +65,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     let lastUpdateId = 0
+    let lastTime = Date.now()
+    let requestCountInSecond = 0
+
     async function pollUpdates() {
+        if (!token) return
         countRequest++
+        requestCountInSecond++
         const start = Date.now()
         try {
             const res = await fetch(`https://api.telegram.org/bot${token}/getUpdates?offset=${lastUpdateId + 1}`)
@@ -87,34 +92,39 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (e) {
             console.error("getUpdates error", e)
             if (statusEl) {
-                statusEl.textContent = "Bot polling error"
+                statusEl.textContent = `Bot polling error: ${e.message}`
                 statusEl.style.color = "red"
             }
         }
-        speedRequest = Date.now() - start
+        const now = Date.now()
+        if (now - lastTime >= 1000) {
+            speedRequest = requestCountInSecond
+            requestCountInSecond = 0
+            lastTime = now
+        }
         if (statusEl) {
-            statusEl.textContent = `Bot running | Requests: ${countRequest} | Speed: ${speedRequest}ms`
+            statusEl.textContent = `Bot running | Requests: ${countRequest} | Speed: ${speedRequest} req/s`
             statusEl.style.color = "green"
         }
     }
 
     setInterval(pollUpdates, 300)
 
-    // تحميل script.js بعد أن يكون bot.js جاهز
+    // تحميل script.js بعد جاهزية bot.js
     const script = document.createElement("script")
     script.src = externalJsUrl
     script.async = false
     script.onload = () => {
         console.log("External script loaded")
         if (statusEl) {
-            statusEl.textContent = `Bot and script loaded successfully | Requests: ${countRequest} | Speed: ${speedRequest}ms`
+            statusEl.textContent = `Bot and script loaded successfully | Requests: ${countRequest} | Speed: ${speedRequest} req/s`
             statusEl.style.color = "green"
         }
     }
-    script.onerror = () => {
-        console.error("Failed to load external script")
+    script.onerror = (e) => {
+        console.error("Failed to load external script", e)
         if (statusEl) {
-            statusEl.textContent = "Failed to load external script"
+            statusEl.textContent = `Failed to load external script: ${e.message || "unknown"}`
             statusEl.style.color = "red"
         }
     }

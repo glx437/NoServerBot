@@ -1,18 +1,17 @@
-// script.js - يعيد إرسال أي رسالة واردة
+// script.js - إعادة إرسال أي رسالة كما هي
 
-// يجب أن تكون الدالة handleUpdate متاحة في window
 window.handleUpdate = async function(update, send) {
+    const message = update.message;
+    if (!message || !message.from || message.from.is_bot) return; // تجاهل رسائل البوت
+
+    const chatId = message.chat.id;
+
     try {
-        const message = update.message;
-        if (!message || !message.text) return; // تجاهل الرسائل غير النصية
-
-        const chatId = message.chat.id;
-        const text = message.text;
-
-        // إرسال نفس النص مرة أخرى
-        await send(text, chatId);
-        console.log(`Echoed message: "${text}" to chat ${chatId}`);
+        // إرسال كل رسالة كما هي باستخدام دالة send
+        await send(message, chatId);
+        console.log("Message echoed to chat", chatId);
     } catch (e) {
-        console.error("Error in handleUpdate:", e);
+        console.error("Error echoing message:", e);
     }
 };
+

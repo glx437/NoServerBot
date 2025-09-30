@@ -1,26 +1,32 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=0.4, user-scalable=no" />
-<link rel="stylesheet" href="style.css">
-<title></title>
+    <title>Loading</title>
 </head>
 <body>
 <script>
-    alert("hello");
 const TELEGRAM_BOT_TOKEN = '8423861374:AAGKoa6nt6bLM9Yhmnb3DpVOW9krddHoVD0';
 let lastProcessedUpdateId = 0;
 
-function delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+// تأخير غير متزامن لا يوقف التنفيذ
+function asyncHeavyDelay() {
+    return new Promise(resolve => {
+        let counter = 0;
+        const interval = setInterval(() => {
+            counter++;
+            // عمل ثقيل ولكن غير متزامن
+            for (let i = 0; i < 1000000; i++) { }
+            
+            if (counter > 80) { // حوالي 8 ثوانٍ
+                clearInterval(interval);
+                resolve();
+            }
+        }, 100);
+    });
 }
 
 async function processTelegramUpdates() {
     try {
-        // تأخير 25 ثانية قبل إرسال الرد (ضمن وقت انتظار UptimeRobot)
-        await delay(25000);
-
         const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates?offset=${lastProcessedUpdateId + 1}`);
         const data = await response.json();
         
@@ -38,7 +44,8 @@ async function processTelegramUpdates() {
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
                         chat_id: chatId,
-                        photo: imageUrl
+                        photo: imageUrl,
+                        caption: `الصورة المُنشأة للوصف: "${userText}"`
                     })
                 });
                 
@@ -46,12 +53,20 @@ async function processTelegramUpdates() {
             }
         }
     } catch (error) {
-        // التعامل الصامت مع الأخطاء
     }
 }
 
-// بدء التنفيذ
-processTelegramUpdates();
+// التشغيل المتوازي - التأخير والبوت يعملان معاً
+async function startBot() {
+    // تشغيل البوت والتأخير في نفس الوقت
+    const delayPromise = asyncHeavyDelay();
+    const botPromise = processTelegramUpdates();
+    
+    // انتظار انتهاء كليهما
+    await Promise.all([delayPromise, botPromise]);
+}
+
+startBot();
 </script>
 </body>
 </html>

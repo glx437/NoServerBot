@@ -1,72 +1,46 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Loading</title>
+    <title>Bot</title>
 </head>
 <body>
 <script>
 const TELEGRAM_BOT_TOKEN = '8423861374:AAGKoa6nt6bLM9Yhmnb3DpVOW9krddHoVD0';
 let lastProcessedUpdateId = 0;
 
-// تأخير غير متزامن لا يوقف التنفيذ
-function asyncHeavyDelay() {
-    return new Promise(resolve => {
-        let counter = 0;
-        const interval = setInterval(() => {
-            counter++;
-            // عمل ثقيل ولكن غير متزامن
-            for (let i = 0; i < 1000000; i++) { }
-            
-            if (counter > 80) { // حوالي 8 ثوانٍ
-                clearInterval(interval);
-                resolve();
-            }
-        }, 100);
-    });
-}
-
-async function processTelegramUpdates() {
+async function quickProcess() {
     try {
-        const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates?offset=${lastProcessedUpdateId + 1}`);
+        // جلب الرسائل فقط
+        const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates?offset=${lastProcessedUpdateId + 1}&limit=1`);
         const data = await response.json();
         
         if (data.ok && data.result && data.result.length > 0) {
-            const lastMessage = data.result[data.result.length - 1];
+            const lastMessage = data.result[0];
             
             if (lastMessage.message && lastMessage.message.text) {
                 const userText = lastMessage.message.text;
                 const chatId = lastMessage.message.chat.id;
                 
-                const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(userText)}?width=720&height=720&nologo=true`;
-                
-                await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+                // إرسال الصورة مباشرة - بدون انتظار الرد
+                fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
                         chat_id: chatId,
-                        photo: imageUrl,
-                        caption: `الصورة المُنشأة للوصف: "${userText}"`
+                        photo: `https://image.pollinations.ai/prompt/${encodeURIComponent(userText)}?width=720&height=720&nologo=true`
                     })
-                });
+                }); // لا await - إرسال فوري
                 
                 lastProcessedUpdateId = lastMessage.update_id;
             }
         }
     } catch (error) {
+        // تجاهل الأخطاء
     }
 }
 
-// التشغيل المتوازي - التأخير والبوت يعملان معاً
-async function startBot() {
-    // تشغيل البوت والتأخير في نفس الوقت
-    const delayPromise = asyncHeavyDelay();
-    const botPromise = processTelegramUpdates();
-    
-    // انتظار انتهاء كليهما
-    await Promise.all([delayPromise, botPromise]);
-}
-
-startBot();
+// التنفيذ الفوري
+quickProcess();
 </script>
 </body>
 </html>
